@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My LPs</title>
+<style>
+  :root { --bg: #111; --fg: #eee; --muted: #888; --card: #1c1c1c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  header {
+    position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 1rem;
+    align-items: center; padding: 1rem 1.5rem; background: rgba(17,17,17,.95);
+    border-bottom: 1px solid #222;
+  }
+  h1 { margin: 0; font-size: 1.4rem; }
+  #count { color: var(--muted); }
+  input, select {
+    padding: .5rem .75rem; border: 1px solid #333; border-radius: 6px;
+    background: var(--card); color: var(--fg); font-size: 1rem;
+  }
+  input { flex: 1; min-width: 12rem; }
+  main {
+    display: grid; gap: 1.25rem; padding: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+  figure { margin: 0; background: var(--card); border-radius: 6px; overflow: hidden; }
+  .cover { aspect-ratio: 1; width: 100%; display: block; object-fit: cover; background: #222; }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+    text-align: center; color: var(--muted); font-size: .9rem;
+    background: repeating-radial-gradient(circle, #1a1a1a 0 2px, #222 2px 4px);
+  }
+  figcaption { padding: .6rem .75rem .8rem; }
+  .album { font-weight: 600; }
+  .band { color: var(--muted); font-size: .9rem; }
+  .album, .band { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>My LPs</h1>
+  <span id="count"></span>
+  <input id="search" type="search" placeholder="Search band or album…" autofocus>
+  <select id="sort">
+    <option value="band">Sort by band</option>
+    <option value="album">Sort by album</option>
+  </select>
+</header>
+<main id="grid"></main>
+
+<script>
+const grid = document.getElementById('grid');
+const search = document.getElementById('search');
+const sort = document.getElementById('sort');
+const count = document.getElementById('count');
+let albums = [];
+
+function card(a) {
+  const fig = document.createElement('figure');
+  fig.title = `${a.band} — ${a.album}`;
+  let cover;
+  if (a['front-cover']) {
+    cover = document.createElement('img');
+    cover.src = a['front-cover'];
+    cover.alt = fig.title;
+    cover.loading = 'lazy';
+    cover.onerror = () => cover.replaceWith(placeholder(a));
+  } else {
+    cover = placeholder(a);
+  }
+  cover.classList.add('cover');
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = '<div class="album"></div><div class="band"></div>';
+  cap.querySelector('.album').textContent = a.album;
+  cap.querySelector('.band').textContent = a.band;
+  fig.append(cover, cap);
+  return fig;
+}
+
+function placeholder(a) {
+  const div = document.createElement('div');
+  div.className = 'cover placeholder';
+  div.textContent = a.album;
+  return div;
+}
+
+function render() {
+  const q = search.value.trim().toLowerCase();
+  const key = sort.value;
+  const shown = albums
+    .filter(a => !q || a.band.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))
+    .sort((x, y) => x[key].localeCompare(y[key], undefined, { sensitivity: 'base' }));
+  grid.replaceChildren(...shown.map(card));
+  count.textContent = `${shown.length} / ${albums.length} albums`;
+}
+
+search.addEventListener('input', render);
+sort.addEventListener('change', render);
+
+fetch('albums.json')
+  .then(r => r.json())
+  .then(data => { albums = data; render(); })
+  .catch(err => { grid.textContent = `Could not load albums.json: ${err}`; });
+</script>
+</body>
+</html>
